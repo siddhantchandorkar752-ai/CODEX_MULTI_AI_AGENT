@@ -2,6 +2,8 @@
 
 Production-grade autonomous multi-agent research operating system blueprint and scaffold.
 
+Live Streamlit app: [codexmultiaiagent-siddhantchandorkar752-ai.streamlit.app](https://codexmultiaiagent-siddhantchandorkar752-ai.streamlit.app/)
+
 Start with [docs/OMEGA_RESEARCH_GRID_BLUEPRINT.md](docs/OMEGA_RESEARCH_GRID_BLUEPRINT.md).
 
 Streamlit deployment path: [docs/STREAMLIT_DEPLOYMENT.md](docs/STREAMLIT_DEPLOYMENT.md).
