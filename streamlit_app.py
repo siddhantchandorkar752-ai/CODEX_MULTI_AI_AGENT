@@ -65,43 +65,142 @@ def api_post(path: str, payload: dict[str, Any], timeout: float = 15.0) -> tuple
 def generate_demo_report(objective: str) -> str:
     normalized = objective.lower().strip()
     if "capital" in normalized and "france" in normalized:
-        answer = "Paris is the capital of France."
-        confidence = "High"
-        evidence_note = "This is stable general knowledge and does not require live web retrieval."
-    else:
-        answer = (
-            "Demo mode has accepted the research objective and generated a structured preview. "
-            "Connect a FastAPI backend to run live search, retrieval, verification, and report synthesis."
-        )
-        confidence = "Preview only"
-        evidence_note = "No live internet retrieval is performed in public demo mode."
-
-    return f"""
+        return """
 ### Executive Summary
 
-{answer}
+Paris is the capital of France.
 
 ### Methodology
 
-The Streamlit public demo simulates the Omega Research Grid workflow:
-
-1. Planner creates a bounded research task.
-2. Search and Reader stages are represented as pending evidence collection.
-3. Writer produces a readable response shell.
-4. Critic and Verification stages mark the output as demo-scoped.
+This is a stable factual question. The demo answers directly instead of pretending to perform a full research workflow.
 
 ### Answer
 
-{answer}
+Paris.
 
 ### Confidence
 
-**{confidence}.** {evidence_note}
+**High.** This is stable general knowledge and does not require live web retrieval.
+"""
 
-### Production Note
+    if all(term in normalized for term in ["langgraph", "crewai", "autogen"]) or "semantic kernel" in normalized:
+        return """
+### Executive Summary
 
-To enable full autonomous research, deploy the FastAPI backend and set `OMEGA_API_BASE_URL`
-in Streamlit Cloud secrets or environment variables.
+For a production-grade multi-agent research assistant, **LangGraph is the strongest default architecture**. It gives explicit state graphs, checkpointing, deterministic routing, resumable execution, and clearer operational control than role-chat frameworks. CrewAI is useful for fast role-based prototypes, AutoGen is strong for conversational multi-agent experiments, and Semantic Kernel is attractive for enterprise plugin ecosystems, especially in Microsoft/.NET-heavy environments. For this project, LangGraph plus LCEL inside nodes is the best fit.
+
+### Comparison
+
+| Framework | Best Use | Strengths | Weaknesses |
+|---|---|---|---|
+| LangGraph | Production agent orchestration | Explicit state machines, checkpoints, graph routing, retries, human interrupts | Requires careful schema and state design |
+| CrewAI | Fast agent-role prototypes | Simple mental model, quick setup, readable role/task abstractions | Less deterministic, weaker for replay and strict governance |
+| AutoGen | Multi-agent conversation research | Flexible agent-to-agent dialogue, good experimentation surface | Harder to bound, test, audit, and cost-control in production |
+| Semantic Kernel | Enterprise app/plugin integration | Strong plugin orientation, good fit for Microsoft ecosystems | Less native for LangChain/LangGraph retrieval workflows |
+
+### Recommendation
+
+Use **LangGraph as the orchestration layer**, **LCEL for internal chains**, and a custom governance kernel around budgets, permissions, retries, and evaluation gates.
+
+The production shape should be:
+
+1. Planner node creates an execution DAG.
+2. Search and Reader nodes run concurrently with bounded retries.
+3. Memory node assembles verified context.
+4. Writer node drafts a cited report.
+5. Critic and Verification nodes run quality gates.
+6. Finalizer emits report, traces, citations, costs, and confidence scores.
+
+### Tradeoffs
+
+LangGraph costs more design effort upfront because state schemas, transitions, and checkpoint behavior must be explicit. That is a good trade for enterprise systems: debugging, replay, cancellation, audit, and observability become possible. CrewAI and AutoGen can feel more natural early, but they tend to become difficult to govern when the system needs strict cost limits, deterministic transitions, and failure recovery.
+
+### Scalability Implications
+
+LangGraph maps cleanly onto distributed workers because each node has typed inputs and outputs. Search, reading, extraction, and verification can scale horizontally behind queues. The bottlenecks shift from orchestration logic to provider rate limits, vector database latency, PDF extraction throughput, and model-token cost.
+
+### Production Risks
+
+The main risks are graph deadlocks, stale checkpoints, runaway retries, inconsistent model outputs, source poisoning, and excessive token spend. These should be handled with state transition validation, idempotency keys, circuit breakers, source sanitization, cost accounting, and evaluation thresholds.
+
+### Final Decision
+
+Choose **LangGraph + LCEL + custom governance**. It is the best balance of determinism, observability, extensibility, and production control for a multi-agent research operating system.
+
+### Confidence
+
+**High for architectural direction.** This demo response is based on framework design characteristics, not live benchmark execution.
+"""
+
+    if "multi-agent" in normalized or "autonomous" in normalized or "agentic" in normalized:
+        return """
+### Executive Summary
+
+Autonomous multi-agent AI systems are moving from simple role-based chat loops toward governed execution graphs. The strongest architectures combine deterministic orchestration, tool isolation, retrieval pipelines, shared memory, citation verification, telemetry, and evaluation gates. The frontier pattern is not one big chatbot; it is a supervised network of specialized workers operating under a policy kernel.
+
+### Major Architectures
+
+1. **Graph-based orchestration:** Explicit DAGs or finite-state machines coordinate planning, retrieval, writing, critique, and verification.
+2. **Role-based collaboration:** Agents are assigned roles such as Planner, Searcher, Reader, Writer, and Critic.
+3. **Tool-using research loops:** Agents call search, browsers, databases, code execution, and document parsers.
+4. **Memory-augmented systems:** Short-term working memory and long-term vector memory help preserve context across runs.
+5. **Evaluator-supervised systems:** Critic and verification agents score factuality, citation quality, reasoning, and confidence.
+
+### Enterprise Use Cases
+
+- Competitive intelligence and market research.
+- Scientific and technical literature review.
+- Legal and regulatory monitoring.
+- Due diligence and investment research.
+- Internal knowledge synthesis across documents, tickets, and wikis.
+- Automated report generation with citation trails.
+
+### Key Risks
+
+- Hallucinated claims and fake citations.
+- Prompt injection from webpages and PDFs.
+- Runaway model/tool costs.
+- Poor observability during multi-step failures.
+- Cross-tenant memory leakage.
+- Over-trusting low-quality retrieved sources.
+
+### Production Requirements
+
+A serious system needs deterministic orchestration, typed messages, budget enforcement, source sanitization, retrieval evaluation, trace logging, confidence scoring, dead-letter queues, circuit breakers, and human escalation paths.
+
+### Outlook
+
+The near-term winners will be systems that combine autonomy with governance. Fully unbounded agents are risky; supervised, observable, stateful agent networks are deployable.
+
+### Confidence
+
+**Medium-high.** This is a demo synthesis based on the architecture scaffold, not live web retrieval.
+"""
+
+    return """
+### Executive Summary
+
+The public demo has accepted the research objective and generated a structured preview. A deployed backend is required for live internet search, retrieval, citation verification, and model-powered synthesis.
+
+### Preview Workflow
+
+1. Planner creates a bounded research task.
+2. Search and Reader stages would collect evidence.
+3. Memory would assemble verified context.
+4. Writer would draft the report.
+5. Critic and Verification would check factuality and citations.
+
+### Current Limitation
+
+This Streamlit deployment is running without a public FastAPI backend, so it cannot perform live retrieval or real model calls yet.
+
+### Next Step
+
+Deploy the FastAPI backend and set `OMEGA_API_BASE_URL` in Streamlit Cloud secrets or environment variables.
+
+### Confidence
+
+**Preview only.** No live internet retrieval is performed in public demo mode.
 """
 
 
@@ -115,6 +214,36 @@ def generate_demo_sources(objective: str) -> list[dict[str, Any]]:
                 "status": "verified",
                 "note": "Paris is the capital of France.",
             }
+        ]
+    if all(term in normalized for term in ["langgraph", "crewai", "autogen"]) or "semantic kernel" in normalized:
+        return [
+            {
+                "source": "Architecture knowledge base",
+                "trust": 0.82,
+                "status": "demo synthesis",
+                "note": "Compares framework design characteristics.",
+            },
+            {
+                "source": "Omega blueprint",
+                "trust": 0.86,
+                "status": "local artifact",
+                "note": "Recommends LangGraph + LCEL + governance kernel.",
+            },
+        ]
+    if "multi-agent" in normalized or "autonomous" in normalized or "agentic" in normalized:
+        return [
+            {
+                "source": "Omega architecture blueprint",
+                "trust": 0.84,
+                "status": "local artifact",
+                "note": "Summarizes agentic system design patterns.",
+            },
+            {
+                "source": "Demo synthesis engine",
+                "trust": 0.70,
+                "status": "demo synthesis",
+                "note": "No live web retrieval in public demo mode.",
+            },
         ]
     return [
         {
