@@ -1,26 +1,47 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import requests
 import streamlit as st
 
 
 DEFAULT_API_BASE_URL = "http://127.0.0.1:8000"
+DEMO_RUN_PREFIX = "demo-"
 
 
 def get_secret_or_env(name: str, default: str = "") -> str:
-    try:
-        value = st.secrets.get(name)
-    except Exception:
-        value = None
-    return str(value or os.getenv(name, default)).strip()
+    env_value = os.getenv(name)
+    if env_value:
+        return env_value.strip()
+
+    local_secret_paths = [
+        Path.cwd() / ".streamlit" / "secrets.toml",
+        Path.home() / ".streamlit" / "secrets.toml",
+    ]
+    if any(path.exists() for path in local_secret_paths):
+        try:
+            secret_value = st.secrets.get(name)
+        except Exception:
+            secret_value = None
+        if secret_value:
+            return str(secret_value).strip()
+
+    return default.strip()
 
 
 def api_base_url() -> str:
     configured = get_secret_or_env("OMEGA_API_BASE_URL", DEFAULT_API_BASE_URL)
     return configured.rstrip("/")
+
+
+def demo_mode_enabled() -> bool:
+    configured = get_secret_or_env("OMEGA_DEMO_MODE", "true").lower()
+    return configured not in {"0", "false", "no", "off"}
 
 
 def api_get(path: str, timeout: float = 4.0) -> tuple[bool, dict[str, Any] | str]:
@@ -41,19 +62,43 @@ def api_post(path: str, payload: dict[str, Any], timeout: float = 15.0) -> tuple
         return False, str(exc)
 
 
+def create_demo_run(payload: dict[str, Any]) -> dict[str, Any]:
+    run_id = f"{DEMO_RUN_PREFIX}{uuid4()}"
+    st.session_state["demo_runs"][run_id] = {
+        "run_id": run_id,
+        "state": "PLANNING",
+        "objective": payload["objective"],
+        "depth": payload["depth"],
+        "max_usd": payload["max_usd"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "mode": "demo",
+    }
+    return st.session_state["demo_runs"][run_id]
+
+
+def get_demo_run(run_id: str) -> dict[str, Any] | None:
+    return st.session_state.get("demo_runs", {}).get(run_id)
+
+
 def render_connection_status() -> None:
     ok, result = api_get("/healthz")
     if ok:
+        st.session_state["backend_connected"] = True
         st.success(f"Backend connected: {api_base_url()}")
         return
 
-    st.warning("Backend is not reachable from this Streamlit app.")
+    st.session_state["backend_connected"] = False
+    if demo_mode_enabled():
+        st.info("Demo mode active. The app can run without backend secrets or a deployed API.")
+    else:
+        st.warning("Backend is not reachable from this Streamlit app.")
+
     with st.expander("Connection details", expanded=False):
         st.write(result)
         st.code(f"OMEGA_API_BASE_URL={api_base_url()}", language="text")
         st.caption(
-            "For Streamlit Cloud, deploy the FastAPI backend separately and set "
-            "OMEGA_API_BASE_URL in Streamlit secrets."
+            "For production, deploy the FastAPI backend separately and set "
+            "OMEGA_API_BASE_URL as an environment variable or Streamlit Cloud secret."
         )
 
 
@@ -110,6 +155,11 @@ def render_run_launcher() -> None:
             st.session_state["run_id"] = result.get("run_id")
             st.session_state["run_state"] = result.get("state", "PLANNING")
             st.success("Research run created.")
+        elif demo_mode_enabled():
+            demo_run = create_demo_run(payload)
+            st.session_state["run_id"] = demo_run["run_id"]
+            st.session_state["run_state"] = demo_run["state"]
+            st.success("Demo research run created.")
         else:
             st.error("Could not create a research run.")
             st.code(str(result), language="text")
@@ -120,6 +170,12 @@ def render_run_status() -> None:
     if not run_id:
         st.info("No run has been started in this Streamlit session.")
         return
+
+    if str(run_id).startswith(DEMO_RUN_PREFIX):
+        demo_run = get_demo_run(str(run_id))
+        if demo_run:
+            st.json(demo_run)
+            return
 
     ok, result = api_get(f"/v1/runs/{run_id}")
     if ok and isinstance(result, dict):
@@ -171,13 +227,14 @@ def main() -> None:
 
     st.title("Omega Research Grid")
     st.caption("Autonomous multi-agent research operations console")
+    st.session_state.setdefault("demo_runs", {})
 
     with st.sidebar:
         st.header("Runtime")
         st.text_input("API Base URL", value=api_base_url(), disabled=True)
         render_connection_status()
         st.divider()
-        st.write("Set `OMEGA_API_BASE_URL` in Streamlit secrets for deployment.")
+        st.write("Public demo mode works without secrets. Set `OMEGA_API_BASE_URL` when a backend is deployed.")
 
     render_operator_summary()
 

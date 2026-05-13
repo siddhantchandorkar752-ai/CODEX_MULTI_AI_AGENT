@@ -29,13 +29,19 @@ http://127.0.0.1:8501
 1. Push this repository to GitHub.
 2. Create a new Streamlit Cloud app.
 3. Select `streamlit_app.py` as the entrypoint.
-4. Add this secret:
+4. Optional: add this secret after the FastAPI backend is deployed:
 
 ```toml
 OMEGA_API_BASE_URL = "https://your-deployed-fastapi-backend.example.com"
 ```
 
 5. Add provider API keys only when the backend or frontend code actually needs them.
+
+The Streamlit frontend has demo mode enabled by default, so the public app can open and show the research operations console even when no backend or secrets are configured. Set this only if you want to force backend connectivity:
+
+```toml
+OMEGA_DEMO_MODE = "false"
+```
 
 ## Important Backend Note
 
@@ -66,3 +72,5 @@ to:
 ```
 
 Never commit `.streamlit/secrets.toml`.
+
+Secrets are not required for the Streamlit UI to open. The app first checks environment variables. It only reads `st.secrets` when a local secrets file exists, which avoids Streamlit's "No secrets found" warning on clean machines.
