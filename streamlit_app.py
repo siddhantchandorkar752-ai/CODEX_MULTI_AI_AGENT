@@ -62,16 +62,99 @@ def api_post(path: str, payload: dict[str, Any], timeout: float = 15.0) -> tuple
         return False, str(exc)
 
 
+def generate_demo_report(objective: str) -> str:
+    normalized = objective.lower().strip()
+    if "capital" in normalized and "france" in normalized:
+        answer = "Paris is the capital of France."
+        confidence = "High"
+        evidence_note = "This is stable general knowledge and does not require live web retrieval."
+    else:
+        answer = (
+            "Demo mode has accepted the research objective and generated a structured preview. "
+            "Connect a FastAPI backend to run live search, retrieval, verification, and report synthesis."
+        )
+        confidence = "Preview only"
+        evidence_note = "No live internet retrieval is performed in public demo mode."
+
+    return f"""
+### Executive Summary
+
+{answer}
+
+### Methodology
+
+The Streamlit public demo simulates the Omega Research Grid workflow:
+
+1. Planner creates a bounded research task.
+2. Search and Reader stages are represented as pending evidence collection.
+3. Writer produces a readable response shell.
+4. Critic and Verification stages mark the output as demo-scoped.
+
+### Answer
+
+{answer}
+
+### Confidence
+
+**{confidence}.** {evidence_note}
+
+### Production Note
+
+To enable full autonomous research, deploy the FastAPI backend and set `OMEGA_API_BASE_URL`
+in Streamlit Cloud secrets or environment variables.
+"""
+
+
+def generate_demo_sources(objective: str) -> list[dict[str, Any]]:
+    normalized = objective.lower()
+    if "capital" in normalized and "france" in normalized:
+        return [
+            {
+                "source": "Built-in demo knowledge",
+                "trust": 0.95,
+                "status": "verified",
+                "note": "Paris is the capital of France.",
+            }
+        ]
+    return [
+        {
+            "source": "Demo planner",
+            "trust": 0.75,
+            "status": "simulated",
+            "note": "Objective decomposed for preview.",
+        },
+        {
+            "source": "Live retrieval backend",
+            "trust": 0.0,
+            "status": "not connected",
+            "note": "Set OMEGA_API_BASE_URL to enable real evidence retrieval.",
+        },
+    ]
+
+
+def generate_demo_trace() -> list[dict[str, str]]:
+    return [
+        {"agent": "planner", "state": "completed", "event": "Objective accepted"},
+        {"agent": "search", "state": "demo", "event": "Live search skipped in public demo mode"},
+        {"agent": "reader", "state": "demo", "event": "Extraction skipped until backend is connected"},
+        {"agent": "writer", "state": "completed", "event": "Readable demo report generated"},
+        {"agent": "verification", "state": "demo", "event": "Marked as demo-scoped output"},
+    ]
+
+
 def create_demo_run(payload: dict[str, Any]) -> dict[str, Any]:
     run_id = f"{DEMO_RUN_PREFIX}{uuid4()}"
     st.session_state["demo_runs"][run_id] = {
         "run_id": run_id,
-        "state": "PLANNING",
+        "state": "FINALIZING",
         "objective": payload["objective"],
         "depth": payload["depth"],
         "max_usd": payload["max_usd"],
         "created_at": datetime.now(timezone.utc).isoformat(),
         "mode": "demo",
+        "report": generate_demo_report(payload["objective"]),
+        "sources": generate_demo_sources(payload["objective"]),
+        "trace": generate_demo_trace(),
     }
     return st.session_state["demo_runs"][run_id]
 
@@ -174,7 +257,11 @@ def render_run_status() -> None:
     if str(run_id).startswith(DEMO_RUN_PREFIX):
         demo_run = get_demo_run(str(run_id))
         if demo_run:
-            st.json(demo_run)
+            st.success("Demo run completed.")
+            col_a, col_b = st.columns(2)
+            col_a.metric("Run ID", str(demo_run["run_id"])[:18] + "...")
+            col_b.metric("State", demo_run["state"])
+            st.caption(f"Objective: {demo_run['objective']}")
             return
 
     ok, result = api_get(f"/v1/runs/{run_id}")
@@ -188,33 +275,43 @@ def render_run_status() -> None:
 
 def render_source_and_report_shell() -> None:
     source_tab, report_tab, trace_tab = st.tabs(["Sources", "Report", "Trace"])
+    run_id = st.session_state.get("run_id")
+    demo_run = get_demo_run(str(run_id)) if run_id and str(run_id).startswith(DEMO_RUN_PREFIX) else None
 
     with source_tab:
-        st.dataframe(
-            [
-                {"source": "Search provider output", "trust": 0.0, "status": "pending"},
-                {"source": "Reader extracted claims", "trust": 0.0, "status": "pending"},
-                {"source": "Verification results", "trust": 0.0, "status": "pending"},
-            ],
-            use_container_width=True,
-            hide_index=True,
-        )
+        if demo_run:
+            st.dataframe(demo_run["sources"], use_container_width=True, hide_index=True)
+        else:
+            st.dataframe(
+                [
+                    {"source": "Search provider output", "trust": 0.0, "status": "pending"},
+                    {"source": "Reader extracted claims", "trust": 0.0, "status": "pending"},
+                    {"source": "Verification results", "trust": 0.0, "status": "pending"},
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
 
     with report_tab:
-        st.markdown(
-            """
-            ### Report Draft
+        if demo_run:
+            st.markdown(demo_run["report"])
+        else:
+            st.markdown(
+                """
+                ### Report Draft
 
-            The report stream will appear here after the Writer, Critic, and Verification
-            agents are wired to the orchestration graph.
-            """
-        )
+                Start a research run to generate a report preview.
+                """
+            )
 
     with trace_tab:
-        st.code(
-            "Trace events will stream here after WebSocket support is connected to Streamlit.",
-            language="text",
-        )
+        if demo_run:
+            st.dataframe(demo_run["trace"], use_container_width=True, hide_index=True)
+        else:
+            st.code(
+                "Trace events will stream here after WebSocket support is connected to Streamlit.",
+                language="text",
+            )
 
 
 def main() -> None:
