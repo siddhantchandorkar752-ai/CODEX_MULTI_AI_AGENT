@@ -7,15 +7,13 @@ The Streamlit app is a deployable frontend for Omega Research Grid. It lives at 
 Run the FastAPI backend in one terminal:
 
 ```powershell
-$env:PYTHONPATH="backend"
-uvicorn app.api.main:app --app-dir backend --reload --host 127.0.0.1 --port 8000
+.\scripts\start_backend.ps1
 ```
 
 Run Streamlit in another terminal:
 
 ```powershell
-pip install -r requirements.txt
-streamlit run streamlit_app.py
+.\scripts\start_streamlit.ps1
 ```
 
 Open:

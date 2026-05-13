@@ -41,19 +41,27 @@ Semantic Scholar note:
 
 ## Backend Smoke Test
 
+Recommended on Windows:
+
+```powershell
+.\scripts\start_backend.ps1
+```
+
+Manual command from the project root:
+
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r backend\requirements.txt
-$env:PYTHONPATH="backend"
+$env:PYTHONPATH=(Resolve-Path ".\backend").Path
 pytest
-uvicorn app.api.main:app --app-dir backend --reload --host 127.0.0.1 --port 8000
+python -m uvicorn app.api.main:app --host 127.0.0.1 --port 8010
 ```
 
 Then open:
 
 ```text
-http://127.0.0.1:8000/docs
+http://127.0.0.1:8010/docs
 ```
 
 ## Windows venv Fallback
